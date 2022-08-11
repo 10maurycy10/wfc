@@ -55,7 +55,7 @@ impl<T, const N: usize> Tile<T,N> {
 }
 
 #[derive(Debug,Clone)]
-pub struct Wave<T, const N: usize> {
+pub struct Wave<T: Clone, const N: usize> {
     pub pallet_size: usize,
     pub pallet: Vec<Tile<T,N>>,
     pub wave: Vec<Vec<Vec<bool>>>,
@@ -64,7 +64,7 @@ pub struct Wave<T, const N: usize> {
     pub rng: rand::rngs::StdRng,
 }
 
-impl<T, const N: usize> Wave<T,N> {
+impl<T: Clone, const N: usize> Wave<T,N> {
     pub fn new(pallet: Vec<Tile<T,N>>, x: usize, y: usize, seed: u64) -> Wave<T,N> {
         // sanity check
         assert!(x > 1);
@@ -118,7 +118,7 @@ impl<T, const N: usize> Wave<T,N> {
         return (best_x, best_y);
     }
 
-    /// Update superposition based on a ruleset mask
+    /// Update superposition based on a ruleset mask assuming a given tile at possiton
     fn apply_ruleset(&mut self, tileid: usize, x: usize, y: usize) {
         let rules = &self.pallet[tileid];
 
@@ -139,8 +139,55 @@ impl<T, const N: usize> Wave<T,N> {
         }
     }
 
+    /// Update the wavefunction of surrounding nodes
+    fn recursive_ruleset_apply(&mut self, x: usize, y:usize) {
+        let mut stack = vec![(x,y)];
+        
+        while stack.len() > 0 {
+            println!("Stack size {} ", stack.len());
+            let (x,y) = stack.pop().unwrap();
+            // Find all allowed rulesets for current tile
+            let allowed_idxs: Vec<_> = self.wave[x][y].iter().enumerate().filter(|(_idx, v)| **v).collect();
+            let allowed_masks = allowed_idxs.iter().map(|(idx, _v)| self.pallet[*idx].mask.clone());
+            // Create all "true" mask.
+            let combined_mask = vec![true; self.pallet_size];
+            let mut combined_mask: [[Vec<_>;N];N] = iter::repeat(iter::repeat(combined_mask).take(N).collect::<Vec<_>>().try_into().unwrap()).take(N).collect::<Vec<_>>().try_into().unwrap();
+            // Combine all masks with and.
+            for mask in allowed_masks {
+                for x in 0..N {
+                    for y in 0..N {
+                        for idx in 0..self.pallet_size {
+                            combined_mask[x][y][idx] &= mask[x][y][idx]
+                        }
+                    }
+                }
+            }
+            // Apply combined mask
+            for mask_x in 0..N {
+                for mask_y in 0..N {
+                    let offset_x = mask_x as isize - (N/2) as isize;
+                    let offset_y = mask_y as isize - (N/2) as isize;
+                    let wave_x = x as isize + offset_x;
+                    let wave_y = y as isize + offset_y;
+                    if wave_x >= 0 && wave_x < self.x as isize && wave_y >= 0 && wave_y < self.y as isize {
+                        for id in 0..self.pallet_size {
+                            if combined_mask[mask_x][mask_y][id] {
+                                if self.wave[wave_x as usize][wave_y as usize][id] {
+                                    stack.push((wave_x as usize,wave_y as usize));
+                                }
+                                self.wave[wave_x as usize][wave_y as usize][id] = false
+                            }
+                        }
+                    }
+                }
+            }
+            
+        }
+    }
+
     /// Single step the wave-function-colapse algoritim
-    pub fn step(&mut self) {
+    /// Returns x y and state of the tile
+    pub fn step(&mut self) -> (usize, usize, usize) {
         let (best_x, best_y) = self.get_lowest_entropy();
 
 //        println!("best {} {}", best_x, best_y);
@@ -193,7 +240,9 @@ impl<T, const N: usize> Wave<T,N> {
 
         self.wave[best_x][best_y] = new_position;
 
-        self.apply_ruleset(selection, best_x, best_y);
+        //self.apply_ruleset(selection, best_x, best_y);
+        self.recursive_ruleset_apply(best_x, best_y);
+        return (best_x, best_y, selection)
     }
 
     /// Checks if the wave function is fully colapsed
@@ -233,19 +282,11 @@ impl<T, const N: usize> Wave<T,N> {
         return false;
     }
     
-    /// Fully colapse a wavefunction.
+    /// Fully colapse a wavefunction, may return a function with contradictions.
     pub fn colapse(&mut self) -> u32 {
         let mut count = 0;
-
-        // TODO optimize this.
-        let mut last_wave = self.wave.clone();
         while !self.is_done() {
             self.step();
-            if self.is_contradiction() {
-                self.wave = last_wave.clone();
-            } else {
-                last_wave = self.wave.clone();
-            }
             count += 1;
         }
         return count;
