@@ -100,6 +100,7 @@ impl<T: Clone, const N: usize> Wave<T,N> {
     }
 
     /// Get the lowest entropy tile, excluding fully colapsed tiles and contradictions
+    #[inline(never)]
     pub fn get_lowest_entropy(&self) -> (usize, usize) {
         let mut best_x = 0;
         let mut best_y = 0;
@@ -140,18 +141,26 @@ impl<T: Clone, const N: usize> Wave<T,N> {
     }
 
     /// Update the wavefunction of surrounding nodes
+    #[inline(never)]
     fn recursive_ruleset_apply(&mut self, x: usize, y:usize) {
         let mut stack = vec![(x,y)];
+        let combined_mask = vec![true; self.pallet_size];
+        let mut combined_mask: [[Vec<_>;N];N] = iter::repeat(iter::repeat(combined_mask).take(N).collect::<Vec<_>>().try_into().unwrap()).take(N).collect::<Vec<_>>().try_into().unwrap();
         
         while stack.len() > 0 {
-            println!("Stack size {} ", stack.len());
+            //println!("Stack size {} ", stack.len());
             let (x,y) = stack.pop().unwrap();
             // Find all allowed rulesets for current tile
-            let allowed_idxs: Vec<_> = self.wave[x][y].iter().enumerate().filter(|(_idx, v)| **v).collect();
-            let allowed_masks = allowed_idxs.iter().map(|(idx, _v)| self.pallet[*idx].mask.clone());
-            // Create all "true" mask.
-            let combined_mask = vec![true; self.pallet_size];
-            let mut combined_mask: [[Vec<_>;N];N] = iter::repeat(iter::repeat(combined_mask).take(N).collect::<Vec<_>>().try_into().unwrap()).take(N).collect::<Vec<_>>().try_into().unwrap();
+            let allowed_idxs = self.wave[x][y].iter().enumerate().filter(|(_idx, v)| **v);
+            let allowed_masks = allowed_idxs.map(|(idx, _v)| self.pallet[idx].mask.clone());
+            // Initalizie all "true" mask.
+            for i in 0..N {
+                for e in 0..N {
+                    for idx in 0..self.pallet_size {
+                        combined_mask[i][e][idx] = true;
+                    }
+                }
+            }
             // Combine all masks with and.
             for mask in allowed_masks {
                 for x in 0..N {
@@ -173,7 +182,11 @@ impl<T: Clone, const N: usize> Wave<T,N> {
                         for id in 0..self.pallet_size {
                             if combined_mask[mask_x][mask_y][id] {
                                 if self.wave[wave_x as usize][wave_y as usize][id] {
-                                    stack.push((wave_x as usize,wave_y as usize));
+                                    if !stack.contains(&(wave_x as usize, wave_y as usize)) {
+                                        stack.push((wave_x as usize,wave_y as usize));
+                                        println!("Stack size: {}",stack.len());
+                                    }
+                                    
                                 }
                                 self.wave[wave_x as usize][wave_y as usize][id] = false
                             }
@@ -187,6 +200,7 @@ impl<T: Clone, const N: usize> Wave<T,N> {
 
     /// Single step the wave-function-colapse algoritim
     /// Returns x y and state of the tile
+    #[inline(never)]
     pub fn step(&mut self) -> (usize, usize, usize) {
         let (best_x, best_y) = self.get_lowest_entropy();
 
@@ -316,26 +330,26 @@ impl<T: Clone, const N: usize> Wave<T,N> {
 mod tests {
     use super::Tile;
     use super::Wave;
-    #[test]
     fn get_lowest_entropy() {
-        let pallet = vec![Tile::allow_all(3, 0), Tile::allow_all(3, 0), Tile::allow_all(3, 0)];
+        let pallet = vec![Tile::<u32, 3>::allow_all(3, 0), Tile::allow_all(3, 0), Tile::allow_all(3, 0)];
         let mut wave = Wave::new(pallet, 3, 3, 123);
         wave.wave[2][1][0] = false;
         assert_eq!(wave.get_lowest_entropy(), (2, 1));
     }
     #[test]
     fn single_step() {
-        let pallet = vec![Tile::allow_all(2, 0), Tile::allow_all(2, 0)];
+        let pallet = vec![Tile::<u32, 3>::allow_all(2, 0), Tile::allow_all(2, 0)];
         let mut wave = Wave::new(pallet, 3, 3, 123);
         wave.step();
     }
     #[test]
     fn full_colapse() {
-        let pallet = vec![Tile::allow_all(2, 0), Tile::allow_all(2, 0)];
+        let pallet = vec![Tile::<u32, 3>::allow_all(2, 0), Tile::allow_all(2, 0)];
         let mut wave = Wave::new(pallet, 3, 3, 123);
         wave.colapse();
         println!("{:?}", wave);
-        assert!(wave.is_done())
+        assert!(wave.is_done());
+        assert!(!wave.is_contradiction());
     }
 
 }
