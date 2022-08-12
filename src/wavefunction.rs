@@ -17,7 +17,6 @@ use std::iter;
 
 impl<T, const N: usize> Tile<T,N> {
     pub fn allow_all(size:usize, additional: T) -> Tile<T,N> {
-        let maskiter = iter::repeat(4).take(N);
         let mask = vec![false; size];
         return Tile {
             additional,
@@ -110,7 +109,6 @@ impl<T: Clone, const N: usize> Wave<T,N> {
         for x in 0..self.x {
             for y in 0..self.y {
                 let e = self.get_entropy(x, y);
-                //println!("{} {} {}", best_x, best_y, e);
                 if e < best_e {
                     best_e = e;
                     best_x = x;
@@ -119,27 +117,6 @@ impl<T: Clone, const N: usize> Wave<T,N> {
             }
         }
         return (best_x, best_y);
-    }
-
-    /// Update superposition based on a ruleset mask assuming a given tile at possiton
-    fn apply_ruleset(&mut self, tileid: usize, x: usize, y: usize) {
-        let rules = &self.pallet[tileid];
-
-        for mask_x in 0..N {
-            for mask_y in 0..N {
-                let offset_x = mask_x as isize - (N/2) as isize;
-                let offset_y = mask_y as isize - (N/2) as isize;
-                let wave_x = x as isize + offset_x;// + x as isize;
-                let wave_y = y as isize + offset_y;// + y as isize;
-                if wave_x >= 0 && wave_x < self.x as isize && wave_y >= 0 && wave_y < self.y as isize {
-                    for id in 0..self.pallet_size {
-                        if rules.mask[mask_x][mask_y][id] {
-                            self.wave[wave_x as usize][wave_y as usize][id] = false
-                        }
-                    }
-                }
-            }
-        }
     }
 
     /// Update the wavefunction of surrounding nodes
@@ -330,6 +307,20 @@ impl<T: Clone, const N: usize> Wave<T,N> {
         } else {
             return None;
         }
+    }
+
+    /// Returns a 2dim vector containing tileids for all colapsed tiles, none if the wave is not
+    /// colapsed.
+    pub fn get_colapsed_vec(&self) -> Option<Vec<Vec<usize>>> {
+        let mut buf = vec![];
+        for x in 0..self.x {
+            let mut col_buf = vec![];
+            for y in 0..self.y {
+                col_buf.push(self.get_colapsed_tile(x,y)?)
+            }
+            buf.push(col_buf);
+        }
+        Some(buf) 
     }
 }
 

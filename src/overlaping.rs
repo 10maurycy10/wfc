@@ -2,14 +2,15 @@ use crate::Wave;
 use crate::Tile;
 
 use std::fmt::Debug;
-use std::collections::{HashSet, HashMap};
+use std::collections::HashMap;
 use std::hash::Hash;
 
 pub type Overlaping<PixelType, const N: usize> = Wave<PixelType, N>;
 
 #[derive(Eq,PartialEq,Hash,Clone,Debug)]
 struct Pattern<T: PartialEq + Hash + Clone + Debug> {
-    pixel_data: [[T; 3]; 3]
+    pixel_data: [[T; 3]; 3],
+    freq: usize
 }
 //```
 //(0,0) (0,1) (0,2)
@@ -23,39 +24,42 @@ impl<T: PartialEq + Hash + Clone + Debug> Pattern<T> {
                 [src[startx+0][starty+0].clone(),src[startx+0][starty+1].clone(),src[startx+0][starty+2].clone()],
                 [src[startx+1][starty+0].clone(),src[startx+1][starty+1].clone(),src[startx+1][starty+2].clone()],
                 [src[startx+2][starty+0].clone(),src[startx+2][starty+1].clone(),src[startx+2][starty+2].clone()]
-            ]
+            ],
+            freq: 1
         }
     }
     
-    fn fromdata(src: [[T; 3]; 3]) -> Pattern<T> {
+    fn fromdata(src: [[T; 3]; 3], f:usize) -> Pattern<T> {
         Pattern {
-            pixel_data: src
+            pixel_data: src,
+            freq: f
         }
     }
     fn y_mirror(&self) -> Pattern<T> {
         let mut data = self.pixel_data.clone();
-        data.iter_mut().map(|x| x.reverse());
+        data.iter_mut().map(|x| x.reverse()).for_each(drop);
         //assert!(self.pixel_data != data);
-        Pattern::fromdata(data)
+        Pattern::fromdata(data, self.freq)
     }
     fn x_mirror(&self) -> Pattern<T> {
         let mut data = self.pixel_data.clone();
         data.reverse();
-        Pattern::fromdata(data)
+        Pattern::fromdata(data, self.freq)
     }
 }
 
 /// Full deduplication
-fn dedup<T: Hash + PartialEq + Eq + Clone>(array: &mut Vec<T>) {
-    let mut items: HashSet<T> = HashSet::new();
+fn dedup<T: Hash+Clone+Debug+PartialEq+Eq>(array: &mut Vec<Pattern<T>>) {
+    let mut items: HashMap<Pattern<T>, usize> = HashMap::new();
     let mut cursor = 0;
     while array.len() > cursor {
         match items.get(&array[cursor]) {
-            Some(_) => {
+            Some(idx) => {
                 array.remove(cursor);
+                array[*idx].freq += 1;
             }
             None => {
-                items.insert(array[cursor].clone());
+                items.insert(array[cursor].clone(), cursor);
                 cursor += 1;
             }
         }
@@ -117,29 +121,7 @@ pub fn overlaping<T: Debug + Hash + PartialEq + Eq + Clone>(
     // For all ids -> 3*3 array -> array of pattern idxs
     let mut valid_neighbors: Vec<[[Vec<usize>; 5]; 5]> = vec![];
 
-    for i in 0..patterns.len() {
-
-        // (0,0) (0,1) (0,2) (0,3) (0,4)
-        // (1,0) (1,1) (1,2) (1,3) (1,4)
-        // (2,0) (2,1) (2,2) (2,3) (2,4)
-        // (3,0) (3,1) (3,2) (3,3) (3,4)
-        // (4,0) (4,1) (4,2) (4,3) (4,4)
-        //
-        // (0,0) (0,1) (0,2)
-        // (1,0) (1,1) (1,2)
-        // (2,0) (2,1) (2,2)
-        //
-        // C U U U C
-        // U C C C U
-        // U C   C U
-        // U C C C U
-        // C U U U C
-        //
-        //       DS            DS
-        //          DD  D   DD 
-        //          D   A   D  
-        //          DD  D   DD
-        //       DS            DS
+    for _ in 0..patterns.len() {
         valid_neighbors.push([
             [vec![], vec![], vec![], vec![], vec![]],
             [vec![], vec![], vec![], vec![], vec![]],
@@ -175,7 +157,7 @@ pub fn overlaping<T: Debug + Hash + PartialEq + Eq + Clone>(
                         }
                     }
                     // If it was not regected, add to parings
-                    if (allowed) {
+                    if allowed {
                         valid_neighbors[a_idx][x as usize][y as usize].push(b_idx);
                     }
                 }
@@ -219,6 +201,8 @@ pub fn overlaping<T: Debug + Hash + PartialEq + Eq + Clone>(
                 }
             }
         }
+
+        tile.weight = pattern.freq as u32;
 
         tile_buffer.push(tile);
     }
