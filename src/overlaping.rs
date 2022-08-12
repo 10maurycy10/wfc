@@ -69,26 +69,12 @@ fn dedup_test() {
     assert_eq!(arr, vec![0,1,2,3,4,5,7]);
 }
 
-
-//fn mirror<T: Hash + Clone + Debug + PartialEq + Eq>(input: &Vec<Pattern<T>>) -> Vec<Pattern<T>> {
-//    let buffer = vec![];
-//    for pattern in input {
-//        let mut xmirror = pattern.pixel_data.clone();
-//        xmirror.reverse();
-//        let ymirror: Vec<_> = pattern.pixel_data.iter().map(|x| {let mut m = x.clone();m.reverse();m}).collect();
-//        let xymirror = ymirror.iter().clone();
-//        buffer.push(Pattern::fromdata(xmirror));
-//        buffer.push(Pattern::fromdata(ymirror));
-//        buffer.push(Pattern::fromdata(xymirror));
-//    }
-//    return buffer;
-//}
-
 pub fn overlaping<T: Debug + Hash + PartialEq + Eq + Clone>(
     image: Vec<Vec<T>>,
     resulty: usize,
     resultx: usize,
     mirror: bool,
+    debug: bool,
     seed: u64,
 ) -> Overlaping<T,5> {
    
@@ -116,12 +102,10 @@ pub fn overlaping<T: Debug + Hash + PartialEq + Eq + Clone>(
         for pattern in &patterns {
             buf.push(pattern.y_mirror());
         }
-        println!("mirrored: {:?}", buf);
         patterns.append(&mut buf);
         for pattern in &patterns {
             buf.push(pattern.x_mirror());
         }
-        println!("mirrored: {:?}", buf);
         patterns.append(&mut buf);
     }
     // TODO transform
@@ -200,15 +184,17 @@ pub fn overlaping<T: Debug + Hash + PartialEq + Eq + Clone>(
     }
 
     // debug information
-    for (n,pattern) in patterns.iter().enumerate() {
-        println!("-- PATTERN -- {}", n);
-        for line in &pattern.pixel_data {
-            println!("{:?}", line);
+    if debug {
+        for (n,pattern) in patterns.iter().enumerate() {
+            println!("-- PATTERN -- {}", n);
+            for line in &pattern.pixel_data {
+                println!("{:?}", line);
+            }
         }
-    }
-
-    for (n,t) in valid_neighbors.iter().enumerate() {
-        println!("{}: {:?}",n, t);
+    
+        for (n,t) in valid_neighbors.iter().enumerate() {
+            println!("{}: {:?}",n, t);
+        }
     }
 
     // Construct tile data
