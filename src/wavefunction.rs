@@ -192,14 +192,17 @@ impl<T: Clone, const N: usize> Wave<T,N> {
                     let wave_y = y as isize + offset_y;
                     if wave_x >= 0 && wave_x < self.x as isize && wave_y >= 0 && wave_y < self.y as isize {
                         for id in 0..self.pallet_size {
+                            let mut append_stack = false;
                             if combined_mask[mask_x][mask_y][id] {
                                 if self.wave[wave_x as usize][wave_y as usize][id] {
-                                    if !stack.contains(&(wave_x as usize, wave_y as usize)) {
-                                        stack.push((wave_x as usize,wave_y as usize));
-                                    }
-                                    
+                                    append_stack = true
                                 }
                                 self.wave[wave_x as usize][wave_y as usize][id] = false
+                            }
+                            if append_stack {
+                                if !stack.contains(&(wave_x as usize, wave_y as usize)) {
+                                    stack.push((wave_x as usize,wave_y as usize));
+                                }
                             }
                         }
                     }

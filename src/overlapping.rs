@@ -95,7 +95,7 @@ pub fn overlapping<T: Debug + Hash + PartialEq + Eq + Clone>(
     mirror: bool,
     debug: bool,
     seed: u64,
-) -> Overlaping<T,5> {
+) -> Overlapping<T,5> {
    
     let mut patterns: Vec<Pattern<T>> = vec![]; 
 
