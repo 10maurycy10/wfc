@@ -11,11 +11,11 @@ pub type Overlaping<PixelType, const N: usize> = Wave<PixelType, N>;
 struct Pattern<T: PartialEq + Hash + Clone + Debug> {
     pixel_data: [[T; 3]; 3]
 }
-///```
-///(0,0) (0,1) (0,2)
-///(1,0) (1,1) (0,2)
-///(2,0) (2,1) (2,2)
-///```
+//```
+//(0,0) (0,1) (0,2)
+//(1,0) (1,1) (0,2)
+//(2,0) (2,1) (2,2)
+//```
 impl<T: PartialEq + Hash + Clone + Debug> Pattern<T> {
     fn extract(src: &Vec<Vec<T>>, startx: usize, starty: usize) -> Pattern<T> {
         Pattern {
@@ -26,42 +26,22 @@ impl<T: PartialEq + Hash + Clone + Debug> Pattern<T> {
             ]
         }
     }
-    fn x(&self) -> [&T; 3] {
-        [&self.pixel_data[0][1], &self.pixel_data[1][1], &self.pixel_data[2][1]]
-    }
-    fn y(&self) -> [&T; 3] {
-        [&self.pixel_data[1][0], &self.pixel_data[1][1], &self.pixel_data[1][2]]
-    }
-    fn top(&self) -> [&T; 3] {
-        [&self.pixel_data[0][0], &self.pixel_data[0][1], &self.pixel_data[0][2]]
-    }
-    fn bottom(&self) -> [&T; 3] {
-        [&self.pixel_data[2][0], &self.pixel_data[2][1], &self.pixel_data[2][2]]
-    }
-    fn left(&self) -> [&T; 3] {
-        [&self.pixel_data[0][0], &self.pixel_data[1][0], &self.pixel_data[2][0]]
-    }
-    fn right(&self) -> [&T; 3] {
-        [&self.pixel_data[0][2], &self.pixel_data[1][2], &self.pixel_data[2][2]]
-    }
-
-    fn bottom_right(&self) -> [&T; 4] {
-        [&self.pixel_data[1][1], &self.pixel_data[0][1], &self.pixel_data[2][1], &self.pixel_data[2][2]]
-    }
-    fn bottom_left(&self) -> [&T; 4] {
-        [&self.pixel_data[1][0], &self.pixel_data[1][1], &self.pixel_data[2][0], &self.pixel_data[2][1]]
-    }
-    fn top_left(&self) -> [&T; 4] {
-        [&self.pixel_data[0][0], &self.pixel_data[0][1], &self.pixel_data[1][0], &self.pixel_data[1][1]]
-    }
-    fn top_right(&self) -> [&T; 4] {
-        [&self.pixel_data[0][1], &self.pixel_data[0][2], &self.pixel_data[1][1], &self.pixel_data[0][2]]
-    }
     
     fn fromdata(src: [[T; 3]; 3]) -> Pattern<T> {
         Pattern {
             pixel_data: src
         }
+    }
+    fn y_mirror(&self) -> Pattern<T> {
+        let mut data = self.pixel_data.clone();
+        data.iter_mut().map(|x| x.reverse());
+        //assert!(self.pixel_data != data);
+        Pattern::fromdata(data)
+    }
+    fn x_mirror(&self) -> Pattern<T> {
+        let mut data = self.pixel_data.clone();
+        data.reverse();
+        Pattern::fromdata(data)
     }
 }
 
@@ -82,6 +62,14 @@ fn dedup<T: Hash + PartialEq + Eq + Clone>(array: &mut Vec<T>) {
     }
 }
 
+#[test]
+fn dedup_test() {
+    let mut arr = vec![0, 1, 2, 1, 3, 3, 3, 4, 5, 4,1,1,1,1,7,1];
+    dedup(&mut arr);
+    assert_eq!(arr, vec![0,1,2,3,4,5,7]);
+}
+
+
 //fn mirror<T: Hash + Clone + Debug + PartialEq + Eq>(input: &Vec<Pattern<T>>) -> Vec<Pattern<T>> {
 //    let buffer = vec![];
 //    for pattern in input {
@@ -100,6 +88,7 @@ pub fn overlaping<T: Debug + Hash + PartialEq + Eq + Clone>(
     image: Vec<Vec<T>>,
     resulty: usize,
     resultx: usize,
+    mirror: bool,
     seed: u64,
 ) -> Overlaping<T,5> {
    
@@ -121,6 +110,20 @@ pub fn overlaping<T: Debug + Hash + PartialEq + Eq + Clone>(
     // deduplicate
     dedup(&mut patterns);
 
+
+    if mirror {
+        let mut buf = vec![];
+        for pattern in &patterns {
+            buf.push(pattern.y_mirror());
+        }
+        println!("mirrored: {:?}", buf);
+        patterns.append(&mut buf);
+        for pattern in &patterns {
+            buf.push(pattern.x_mirror());
+        }
+        println!("mirrored: {:?}", buf);
+        patterns.append(&mut buf);
+    }
     // TODO transform
 
     // Repeat deduplication because tranformations create a *lot* of duplicates.
@@ -172,7 +175,6 @@ pub fn overlaping<T: Debug + Hash + PartialEq + Eq + Clone>(
                 for y in 0..5 {
                     let dx = x - (5/2 as isize);
                     let dy = y - (5/2 as isize);
-                    println!("x {} y {} dx {} dy {}", x, y, dx, dy);
                     let mut allowed = true;
                     // For all pixels in pattern a...
                     for pattern_a_x in 0..(3 as isize) {
@@ -245,5 +247,5 @@ fn test() {
         vec![3, 4, 5],
         vec![6, 7, 8]
     ];
-    let l = overlaping(img, 5, 5, 123).colapse();
+    let l = overlaping(img, 5, 5, true, 123).colapse();
 }

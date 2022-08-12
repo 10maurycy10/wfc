@@ -54,8 +54,9 @@ impl<T, const N: usize> Tile<T,N> {
     }
 }
 
-#[derive(Debug,Clone)]
+//#[derive(Debug,Clone)]
 pub struct Wave<T: Clone, const N: usize> {
+    pub callback: Option<Box<dyn Fn (&Wave<T,N>, usize) -> ()>>,
     pub pallet_size: usize,
     pub pallet: Vec<Tile<T,N>>,
     pub wave: Vec<Vec<Vec<bool>>>,
@@ -73,6 +74,7 @@ impl<T: Clone, const N: usize> Wave<T,N> {
         let wave = vec![vec![vec![true; pallet.len()]; y]; x];
 
         Wave {
+            callback: None,
             x,
             y,
             pallet_size: pallet.len(),
@@ -184,7 +186,6 @@ impl<T: Clone, const N: usize> Wave<T,N> {
                                 if self.wave[wave_x as usize][wave_y as usize][id] {
                                     if !stack.contains(&(wave_x as usize, wave_y as usize)) {
                                         stack.push((wave_x as usize,wave_y as usize));
-                                        println!("Stack size: {}",stack.len());
                                     }
                                     
                                 }
@@ -256,6 +257,8 @@ impl<T: Clone, const N: usize> Wave<T,N> {
 
         //self.apply_ruleset(selection, best_x, best_y);
         self.recursive_ruleset_apply(best_x, best_y);
+
+
         return (best_x, best_y, selection)
     }
 
@@ -297,11 +300,15 @@ impl<T: Clone, const N: usize> Wave<T,N> {
     }
     
     /// Fully colapse a wavefunction, may return a function with contradictions.
-    pub fn colapse(&mut self) -> u32 {
+    pub fn colapse(&mut self) -> usize {
         let mut count = 0;
         while !self.is_done() {
             self.step();
             count += 1;
+            match &self.callback {
+                Some(n) => n(self, count),
+                None => ()
+            }
         }
         return count;
     }
