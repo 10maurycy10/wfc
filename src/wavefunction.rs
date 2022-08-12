@@ -53,18 +53,30 @@ impl<T, const N: usize> Tile<T,N> {
     }
 }
 
-//#[derive(Debug,Clone)]
+/// A Wave function colapse solver.
+/// Generic over Pattern size and assocated data type.
+/// You should use the Wave::new() function to construct this to ensure you get a sane state.
 pub struct Wave<T: Clone, const N: usize> {
+    /// A callback called on each step of the .collapse() method, I used this to make an animation
+    /// of the algoritim.
     pub callback: Option<Box<dyn Fn (&Wave<T,N>, usize) -> ()>>,
-    pub pallet_size: usize,
+    /// The pallet of tiles avalable, should not be modifyed ater creation.
     pub pallet: Vec<Tile<T,N>>,
+    /// The pallet size, if this is not pallet.len(), weirdness will occur.
+    pub pallet_size: usize,
+    /// The actual wave function, 2D array of vec![bool; pallet_size]
+    /// If true, the tile is possible at the location.
     pub wave: Vec<Vec<Vec<bool>>>,
+    /// X and Y dimentions, this needs to match .wave
     pub x: usize,
+    /// X and Y dimentions, this needs to match .wave
     pub y: usize,
     pub rng: rand::rngs::StdRng,
 }
 
 impl<T: Clone, const N: usize> Wave<T,N> {
+    /// Create a solver, taking a tile pallet, size of image to generate and rng seed.
+    /// Panics if x or y is zeor or the pallet is empty
     pub fn new(pallet: Vec<Tile<T,N>>, x: usize, y: usize, seed: u64) -> Wave<T,N> {
         // sanity check
         assert!(x > 1);
@@ -84,7 +96,7 @@ impl<T: Clone, const N: usize> Wave<T,N> {
     }
 
     /// Get the entropy of a tile, returns f32::MAX for colapsed tiles, and contradictions
-    /// TODO take weight into account
+    // TODO take weight into account
     fn get_entropy(&self, x: usize, y: usize) -> f32 {
         let superposition = &self.wave[x][y];
         let mut count_allowed = 0;
@@ -120,6 +132,8 @@ impl<T: Clone, const N: usize> Wave<T,N> {
     }
 
     /// Update the wavefunction of surrounding nodes
+    /// This repatedy applys rules to reduce the enthropy as much as possible, and prevent
+    /// contradictions.
     #[inline(never)]
     fn recursive_ruleset_apply(&mut self, x: usize, y:usize) {
         let mut stack = vec![(x,y)];
@@ -176,18 +190,14 @@ impl<T: Clone, const N: usize> Wave<T,N> {
         }
     }
 
-    /// Single step the wave-function-colapse algoritim
-    /// Returns x y and state of the tile
+    /// Single step the wave-function-collapse algoritim
+    /// Returns x, y, and collapsed idx of the tile
     #[inline(never)]
     pub fn step(&mut self) -> (usize, usize, usize) {
         let (best_x, best_y) = self.get_lowest_entropy();
 
-//        println!("best {} {}", best_x, best_y);
-
         let superposition = &self.wave[best_x][best_y];
     
-//        println!("super {:?}", superposition);
-
         let mut allowed = vec![];
         let mut weights = vec![];
         let mut total_allowed_weights = 0;
@@ -200,15 +210,10 @@ impl<T: Clone, const N: usize> Wave<T,N> {
             }
         }
       
-//        println!("allowed {:?} {:?}", allowed, weights);
-
         let rng = self.rng.next_u32();
 
-//        println!("random: {:?} {}", rng, total_allowed_weights);
         // weighted selection
         let rng = rng % total_allowed_weights;
-
-//        println!("random: {:?}", rng);
 
         let mut current_weight_sum = 0;
         
@@ -224,22 +229,18 @@ impl<T: Clone, const N: usize> Wave<T,N> {
         
         let selection = allowed[selection];
        
-//        println!("{} ", selection);
-
         let mut new_position = vec![false; self.pallet_size];
 
         new_position[selection] = true;
 
         self.wave[best_x][best_y] = new_position;
 
-        //self.apply_ruleset(selection, best_x, best_y);
         self.recursive_ruleset_apply(best_x, best_y);
-
 
         return (best_x, best_y, selection)
     }
 
-    /// Checks if the wave function is fully colapsed
+    /// Checks if the wave function is fully collapsed, returns true on contradiction.
     pub fn is_done(&self) -> bool {
         for x in 0..self.x {
             for y in 0..self.y {
@@ -258,6 +259,7 @@ impl<T: Clone, const N: usize> Wave<T,N> {
         return true;
     }
     
+    /// Checks if the function contains a contradiction.
     pub fn is_contradiction(&self) -> bool {
         for x in 0..self.x {
             for y in 0..self.y {
@@ -276,8 +278,9 @@ impl<T: Clone, const N: usize> Wave<T,N> {
         return false;
     }
     
-    /// Fully colapse a wavefunction, may return a function with contradictions.
-    pub fn colapse(&mut self) -> usize {
+    /// Fully collapse a wavefunction, may produce a function with contradictions.
+    /// Returns the count of steps it took to collapse.
+    pub fn collapse(&mut self) -> usize {
         let mut count = 0;
         while !self.is_done() {
             self.step();
@@ -290,8 +293,8 @@ impl<T: Clone, const N: usize> Wave<T,N> {
         return count;
     }
 
-    /// Gets the tileid for a colapsed location in the wavefunction. None if it is not colapsed
-    pub fn get_colapsed_tile(&self, x: usize, y: usize) -> Option<usize> {
+    /// Gets the tileid for a collapsed location in the wavefunction. None if it is not col;apsed.
+    pub fn get_collapsed_tile(&self, x: usize, y: usize) -> Option<usize> {
         let superposition = &self.wave[x][y];
         let mut allowed = 0;
         let mut colapsed_idx = 0;
@@ -309,14 +312,28 @@ impl<T: Clone, const N: usize> Wave<T,N> {
         }
     }
 
-    /// Returns a 2dim vector containing tileids for all colapsed tiles, none if the wave is not
+    /// Returns a 2dim vector containing tileids for all collapsed tiles, none if the wave is not
     /// colapsed.
-    pub fn get_colapsed_vec(&self) -> Option<Vec<Vec<usize>>> {
+    pub fn get_collapsed_vec(&self) -> Option<Vec<Vec<usize>>> {
         let mut buf = vec![];
         for x in 0..self.x {
             let mut col_buf = vec![];
             for y in 0..self.y {
-                col_buf.push(self.get_colapsed_tile(x,y)?)
+                col_buf.push(self.get_collapsed_tile(x,y)?)
+            }
+            buf.push(col_buf);
+        }
+        Some(buf) 
+    }
+    /// Returns the assocated data for every tile in the wave, None if it is not fully collapsed.
+    pub fn get_collapsed_data(&self) -> Option<Vec<Vec<&T>>> {
+        let mut buf = vec![];
+        for x in 0..self.x {
+            let mut col_buf = vec![];
+            for y in 0..self.y {
+                let idx = self.get_collapsed_tile(x,y)?;
+                let data = &self.pallet[idx].additional;
+                col_buf.push(data);
             }
             buf.push(col_buf);
         }
@@ -341,7 +358,7 @@ mod tests {
         wave.step();
     }
     #[test]
-    fn full_colapse() {
+    fn full_collapse() {
         let pallet = vec![Tile::<u32, 3>::allow_all(2, 0), Tile::allow_all(2, 0)];
         let mut wave = Wave::new(pallet, 3, 3, 123);
         wave.colapse();
