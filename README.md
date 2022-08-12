@@ -7,7 +7,7 @@ Example usage:
 ```rust
 use image::io::Reader as ImageReader;
 use image::RgbImage;
-use yawfc::overlaping;
+use yawfc::overlapping::overlapping;
 
 let generated_size = 30;
 
@@ -16,7 +16,7 @@ let img = ImageReader::open("in.png").unwrap().decode().unwrap().to_rgb8();
 let img:Vec<Vec<_>> = img.rows().map(|x| x.map(|x| x.clone()).collect()).collect();
 
 // Create the wave function from example image.
-let mut wave = overlaping(img, generated_size, generated_size, true, false, since_the_epoch.as_millis() as u64);
+let mut wave = overlapping(img, generated_size, generated_size, true, false, since_the_epoch.as_millis() as u64);
 
 // Collapse the wave function.
 wave.colapse();

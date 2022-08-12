@@ -5,7 +5,7 @@ use std::fmt::Debug;
 use std::collections::HashMap;
 use std::hash::Hash;
 
-pub type Overlaping<PixelType, const N: usize> = Wave<PixelType, N>;
+pub type Overlapping<PixelType, const N: usize> = Wave<PixelType, N>;
 
 #[derive(Eq,PartialEq,Hash,Clone,Debug)]
 struct Pattern<T: PartialEq + Hash + Clone + Debug> {
@@ -73,7 +73,22 @@ fn dedup_test() {
     assert_eq!(arr, vec![0,1,2,3,4,5,7]);
 }
 
-pub fn overlaping<T: Debug + Hash + PartialEq + Eq + Clone>(
+/// Create a wave function collapse solver for texture generation with the overlapping model.
+///
+/// N is hard coded at 3 (for now).
+///
+/// The generated output has 2 constraints:
+/// - All N*N patterns in the output are present in the input. (Rotation and mirroring is  optionally allowed).
+/// - The ratios of the patterns in the output should be approximately the same as the input for a large enough sample size. (This is achieved through weighting the rng.)
+///
+/// This is achieved by extracting all N*N patterns from the image. (No boundary conditions for
+/// now, you have to pad your image.)
+///
+/// Then computing all possible ways the patterns can overlap without conflicting. (This is blazing
+/// fast O(n^2*N^2))
+///
+/// These rules are then passed to the solver.
+pub fn overlapping<T: Debug + Hash + PartialEq + Eq + Clone>(
     image: Vec<Vec<T>>,
     resulty: usize,
     resultx: usize,
@@ -217,5 +232,5 @@ fn test() {
         vec![3, 4, 5],
         vec![6, 7, 8]
     ];
-    let l = overlaping(img, 5, 5, true, 123).colapse();
+    let l = overlapping(img, 5, 5, true, 123).colapse();
 }

@@ -53,9 +53,22 @@ impl<T, const N: usize> Tile<T,N> {
     }
 }
 
-/// A Wave function colapse solver.
-/// Generic over Pattern size and assocated data type.
+/// A Wave function collapse solver.
+/// Generic over Pattern size and associated data type.
+/// 
 /// You should use the Wave::new() function to construct this to ensure you get a sane state.
+/// 
+/// The algorithm starts by assuming a state where every location is a super position of all
+/// tiles. (.wave is all trues.)
+/// 
+/// Then until the wave is fully collapsed (one possibility per location):
+///  0. Find lowest entropy tile, the one with the most information that has not been collapsed. (Least possibility's).
+///  1. Collapse that tile by selecting a single allowed tile, removing other possibility's.
+///  2. Use the rules to narrow down the possibility's for nearby tiles.
+/// 
+/// It is theoretic possible for a tile to have not possibility's, but this is very rare and not
+/// handled here.
+///
 pub struct Wave<T: Clone, const N: usize> {
     /// A callback called on each step of the .collapse() method, I used this to make an animation
     /// of the algoritim.
