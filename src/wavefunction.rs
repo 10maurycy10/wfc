@@ -1,13 +1,16 @@
 use rand::prelude::*;
 
-/// The data for a tile
+/// Stucture for holding the maching rules and assocatied data for a tile type.
+/// T: assocatied data tye
 /// N: the pattern size. MUST BE ODD
 #[derive(Debug,Clone)]
 pub struct Tile<T, const N: usize> {
+    /// Additional data type, such as pixel value for image generation.
     pub additional: T,
-    /// The Tile frequency weight
+    /// The freqency the tile should appear at, as a fraction of the sum of the weights of all
+    /// tiles.
     pub weight: u32,
-    /// A table of allowable agecent tyles
+    /// A table of allowable ageccent tyles
     /// 0 : allowed
     /// 1 : disllowed
     pub mask: [[Vec<bool>; N]; N]
@@ -56,6 +59,9 @@ impl<T, const N: usize> Tile<T,N> {
 /// A Wave function collapse solver.
 /// Generic over Pattern size and associated data type.
 /// 
+/// T: Data type for tiles.
+/// N: Size of rules. (MUST BE ODD)
+///
 /// You should use the Wave::new() function to construct this to ensure you get a sane state.
 /// 
 /// The algorithm starts by assuming a state where every location is a super position of all
