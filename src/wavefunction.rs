@@ -132,7 +132,6 @@ impl<T: Clone, const N: usize> Wave<T,N> {
     }
 
     /// Get the lowest entropy tile, excluding fully colapsed tiles and contradictions
-    #[inline(never)]
     pub fn get_lowest_entropy(&self) -> (usize, usize) {
         let mut best_x = 0;
         let mut best_y = 0;
@@ -153,7 +152,6 @@ impl<T: Clone, const N: usize> Wave<T,N> {
     /// Update the wavefunction of surrounding nodes
     /// This repatedy applys rules to reduce the enthropy as much as possible, and prevent
     /// contradictions.
-    #[inline(never)]
     fn recursive_ruleset_apply(&mut self, x: usize, y:usize) {
         let mut stack = vec![(x,y)];
         let combined_mask = vec![true; self.pallet_size];
@@ -214,7 +212,6 @@ impl<T: Clone, const N: usize> Wave<T,N> {
 
     /// Single step the wave-function-collapse algoritim
     /// Returns x, y, and collapsed idx of the tile
-    #[inline(never)]
     pub fn step(&mut self) -> (usize, usize, usize) {
         let (best_x, best_y) = self.get_lowest_entropy();
 
