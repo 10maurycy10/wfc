@@ -1,5 +1,9 @@
 [package]
 name = "yawfc"
+description="Yet another wave function collapse implementation"
+repository="https://github.com/10maurycy10/wfc.git"
+homepage="https://github.com/10maurycy10/wfc"
+licence="GPL-3.0-or-later"
 version = "0.1.0"
 edition = "2021"
 
