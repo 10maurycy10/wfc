@@ -1,6 +1,6 @@
 # Yet Another Wave Function Collapse implementation
 
-This is an unfinished pure rust implantation of the [Wave Function Collapse](https://github.com/mxgmn/WaveFunctionCollapse) Algorithm.
+Toy rust lubrary to create images based on paterns extracted from example data.
 
 Example usage:
 
